@@ -118,6 +118,10 @@ class ProjectController extends AbstractController
         if ($withIssues) {
             $data['issues'] = [];
             foreach ($project->getIssues() as $issue) {
+                // Only include root issues (epics without parent)
+                if ($issue->getParent() !== null) {
+                    continue;
+                }
                 $data['issues'][] = [
                     'id' => $issue->getId(),
                     'title' => $issue->getTitle(),
