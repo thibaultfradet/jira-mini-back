@@ -38,15 +38,15 @@ class LoginAuthenticator extends AbstractAuthenticator
             throw new CustomUserMessageAuthenticationException('Invalid JSON payload');
         }
 
-        $username = $data['username'] ?? '';
+        $email = $data['email'] ?? '';
         $password = $data['password'] ?? '';
 
-        if (empty($username) || empty($password)) {
-            throw new CustomUserMessageAuthenticationException('Username and password are required');
+        if (empty($email) || empty($password)) {
+            throw new CustomUserMessageAuthenticationException('Email and password are required');
         }
 
         return new Passport(
-            new UserBadge($username, fn (string $identifier) => $this->userRepository->findOneBy(['email' => $identifier])),
+            new UserBadge($email, fn (string $identifier) => $this->userRepository->findOneBy(['email' => $identifier])),
             new PasswordCredentials($password)
         );
     }
