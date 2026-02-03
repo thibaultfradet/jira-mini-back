@@ -61,10 +61,17 @@ class Issue
     #[ORM\OneToMany(targetEntity: Comment::class, mappedBy: 'issue')]
     private Collection $comments;
 
+    /**
+     * @var Collection<int, Sprint>
+     */
+    #[ORM\ManyToMany(targetEntity: Sprint::class, mappedBy: 'issues')]
+    private Collection $sprints;
+
     public function __construct()
     {
         $this->issues = new ArrayCollection();
         $this->comments = new ArrayCollection();
+        $this->sprints = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -238,6 +245,33 @@ class Issue
                 $comment->setIssue(null);
             }
         }
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Sprint>
+     */
+    public function getSprints(): Collection
+    {
+        return $this->sprints;
+    }
+
+    public function addSprint(Sprint $sprint): static
+    {
+        if (!$this->sprints->contains($sprint)) {
+            $this->sprints->add($sprint);
+            $sprint->addIssue($this);
+        }
+
+        return $this;
+    }
+
+    public function removeSprint(Sprint $sprint): static
+    {
+        if ($this->sprints->removeElement($sprint)) {
+            $sprint->removeIssue($this);
+        }
+
         return $this;
     }
 }

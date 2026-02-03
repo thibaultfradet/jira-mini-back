@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\SprintRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -32,6 +34,17 @@ class Sprint
 
     #[ORM\Column]
     private ?\DateTimeImmutable $updatedAt = null;
+
+    /**
+     * @var Collection<int, Issue>
+     */
+    #[ORM\ManyToMany(targetEntity: Issue::class, inversedBy: 'sprints')]
+    private Collection $issues;
+
+    public function __construct()
+    {
+        $this->issues = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -107,6 +120,30 @@ class Sprint
     public function setUpdatedAt(\DateTimeImmutable $updatedAt): static
     {
         $this->updatedAt = $updatedAt;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Issue>
+     */
+    public function getIssues(): Collection
+    {
+        return $this->issues;
+    }
+
+    public function addIssue(Issue $issue): static
+    {
+        if (!$this->issues->contains($issue)) {
+            $this->issues->add($issue);
+        }
+
+        return $this;
+    }
+
+    public function removeIssue(Issue $issue): static
+    {
+        $this->issues->removeElement($issue);
 
         return $this;
     }

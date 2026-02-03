@@ -35,10 +35,42 @@ class ProjectController extends AbstractController
         $project = $this->projectRepository->find($id);
 
         if (!$project) {
-            return $this->json(['message' => 'Project not found'], Response::HTTP_NOT_FOUND);
+            return $this->json(
+                ['message' => 'Project not found'],
+                Response::HTTP_NOT_FOUND
+            );
         }
 
-        return $this->json($this->serialize($project, true));
+        // Build a custom response payload without
+        $data = [
+            'id' => $project->getId(),
+            'name' => $project->getName(),
+            'description' => $project->getDescription(),
+            'createdAt' => $project->getCreatedAt()?->format(DATE_ATOM),
+            'updatedAt' => $project->getUpdatedAt()?->format(DATE_ATOM),
+            'issues' => array_map(
+                function ($issue) {
+                    $assignee = $issue->getAssignee();
+
+                    return [
+                        'id' => $issue->getId(),
+                        'title' => $issue->getTitle(),
+                        'type' => $issue->getType(),
+                        'status' => $issue->getStatus(),
+                        // Safely include assignee if present
+                        'assignee' => $assignee ? [
+                            'id' => $assignee->getId(),
+                            'firstName' => $assignee->getFirstName(),
+                            'lastName' => $assignee->getLastName(),
+                            'email' => $assignee->getEmail(),
+                        ] : null,
+                    ];
+                },
+                $project->getIssues()->toArray()
+            ),
+        ];
+
+        return $this->json($data);
     }
 
     #[Route('', name: 'projects_create', methods: ['POST'])]

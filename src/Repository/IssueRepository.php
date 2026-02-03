@@ -16,28 +16,20 @@ class IssueRepository extends ServiceEntityRepository
         parent::__construct($registry, Issue::class);
     }
 
-    //    /**
-    //     * @return Issue[] Returns an array of Issue objects
-    //     */
-    //    public function findByExampleField($value): array
-    //    {
-    //        return $this->createQueryBuilder('i')
-    //            ->andWhere('i.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->orderBy('i.id', 'ASC')
-    //            ->setMaxResults(10)
-    //            ->getQuery()
-    //            ->getResult()
-    //        ;
-    //    }
-
-    //    public function findOneBySomeField($value): ?Issue
-    //    {
-    //        return $this->createQueryBuilder('i')
-    //            ->andWhere('i.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->getQuery()
-    //            ->getOneOrNullResult()
-    //        ;
-    //    }
+    /**
+     * @return Issue[]
+     */
+    public function findBacklog(): array
+    {
+        return $this->createQueryBuilder('i')
+            ->leftJoin('i.sprints', 's')
+            ->where('s.id IS NULL OR i.status != :done')
+            ->andWhere('i.type != :epic')
+            ->setParameter('done', 'done')
+            ->setParameter('epic', 'epic')
+            ->groupBy('i.id')
+            ->orderBy('i.createdAt', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
 }

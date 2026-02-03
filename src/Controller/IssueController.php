@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Issue;
 use App\Repository\IssueRepository;
 use App\Repository\ProjectRepository;
+use App\Repository\SprintRepository;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -20,8 +21,40 @@ class IssueController extends AbstractController
         private IssueRepository $issueRepository,
         private ProjectRepository $projectRepository,
         private UserRepository $userRepository,
+        private SprintRepository $sprintRepository,
         private EntityManagerInterface $entityManager,
     ) {
+    }
+
+    #[Route('/backlog', name: 'issues_backlog', methods: ['GET'])]
+    public function backlog(): JsonResponse
+    {
+        $issues = $this->issueRepository->findBacklog();
+
+        return $this->json(array_map(function ($issue) {
+            $assignee = $issue->getAssignee();
+            $reporter = $issue->getReporter();
+
+            return [
+                'id' => $issue->getId(),
+                'title' => $issue->getTitle(),
+                'type' => $issue->getType(),
+                'status' => $issue->getStatus(),
+                'storyPoints' => $issue->getStoryPoints(),
+                'assignee' => $assignee ? [
+                    'id' => $assignee->getId(),
+                    'firstName' => $assignee->getFirstName(),
+                    'lastName' => $assignee->getLastName(),
+                    'email' => $assignee->getEmail(),
+                ] : null,
+                'reporter' => $reporter ? [
+                    'id' => $reporter->getId(),
+                    'firstName' => $reporter->getFirstName(),
+                    'lastName' => $reporter->getLastName(),
+                    'email' => $reporter->getEmail(),
+                ] : null,
+            ];
+        }, $issues));
     }
 
     #[Route('/{id}', name: 'issues_show', methods: ['GET'])]
@@ -55,6 +88,8 @@ class IssueController extends AbstractController
                 'storyPoints' => $child->getStoryPoints(),
                 'assignee' => $child->getAssignee() ? [
                     'id' => $child->getAssignee()->getId(),
+                    'firstName' => $child->getAssignee()->getFirstName(),
+                    'lastName' => $child->getAssignee()->getLastName(),
                     'email' => $child->getAssignee()->getEmail(),
                 ] : null,
             ];
@@ -158,6 +193,22 @@ class IssueController extends AbstractController
 
         if (array_key_exists('storyPoints', $data)) {
             $issue->setStoryPoints($data['storyPoints']);
+        }
+
+        if (array_key_exists('sprintId', $data)) {
+            // Remove from all current sprints
+            foreach ($issue->getSprints() as $sprint) {
+                $issue->removeSprint($sprint);
+            }
+
+            // Assign to new sprint if not null
+            if ($data['sprintId'] !== null) {
+                $sprint = $this->sprintRepository->find($data['sprintId']);
+                if (!$sprint) {
+                    return $this->json(['message' => 'Sprint not found'], Response::HTTP_NOT_FOUND);
+                }
+                $issue->addSprint($sprint);
+            }
         }
 
         $issue->setUpdatedAt(new \DateTimeImmutable());
