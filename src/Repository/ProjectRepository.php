@@ -16,28 +16,24 @@ class ProjectRepository extends ServiceEntityRepository
         parent::__construct($registry, Project::class);
     }
 
-    //    /**
-    //     * @return Project[] Returns an array of Project objects
-    //     */
-    //    public function findByExampleField($value): array
-    //    {
-    //        return $this->createQueryBuilder('p')
-    //            ->andWhere('p.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->orderBy('p.id', 'ASC')
-    //            ->setMaxResults(10)
-    //            ->getQuery()
-    //            ->getResult()
-    //        ;
-    //    }
-
-    //    public function findOneBySomeField($value): ?Project
-    //    {
-    //        return $this->createQueryBuilder('p')
-    //            ->andWhere('p.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->getQuery()
-    //            ->getOneOrNullResult()
-    //        ;
-    //    }
+    /**
+     * @return array[] Top 5 projects with opened/finished issue counts
+     */
+    public function findTopActive(int $limit = 5): array
+    {
+        return $this->createQueryBuilder('p')
+            ->select(
+                'p',
+                'SUM(CASE WHEN i.status IN (:opened) THEN 1 ELSE 0 END) AS openedIssueCount',
+                'SUM(CASE WHEN i.status = :done THEN 1 ELSE 0 END) AS finishedIssueCount'
+            )
+            ->leftJoin('p.issues', 'i')
+            ->setParameter('opened', ['todo', 'in_progress'])
+            ->setParameter('done', 'done')
+            ->groupBy('p.id')
+            ->orderBy('openedIssueCount', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
 }

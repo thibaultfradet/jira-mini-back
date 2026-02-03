@@ -19,6 +19,24 @@ class IssueRepository extends ServiceEntityRepository
     /**
      * @return Issue[]
      */
+    public function findAssignedTo(int $userId): array
+    {
+        return $this->createQueryBuilder('i')
+            ->where('i.assignee = :userId')
+            ->andWhere('i.status IN (:statuses)')
+            ->andWhere('i.type != :epic')
+            ->setParameter('userId', $userId)
+            ->setParameter('statuses', ['in_progress', 'todo'])
+            ->setParameter('epic', 'epic')
+            ->orderBy('i.status', 'ASC')
+            ->addOrderBy('i.updatedAt', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * @return Issue[]
+     */
     public function findBacklog(): array
     {
         return $this->createQueryBuilder('i')
