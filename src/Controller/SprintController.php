@@ -19,7 +19,13 @@ class SprintController extends AbstractController
     #[Route('/all', name: 'sprints_all', methods: ['GET'])]
     public function all(): JsonResponse
     {
-        $sprints = $this->sprintRepository->findBy([], ['startDate' => 'ASC']);
+        $sprints = $this->sprintRepository->createQueryBuilder('s')
+            ->where('s.isActive = true')
+            ->orWhere('s.endDate >= :today')
+            ->setParameter('today', new \DateTime('today'))
+            ->orderBy('s.startDate', 'ASC')
+            ->getQuery()
+            ->getResult();
 
         return $this->json(array_map(fn($sprint) => $this->serializeSprint($sprint), $sprints));
     }
