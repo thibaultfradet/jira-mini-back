@@ -12,6 +12,7 @@ if (($_SERVER['HTTP_X_DEPLOY_TOKEN'] ?? '') !== ($_ENV['DEPLOY_HOOK_TOKEN'] ?? '
 $root = dirname(__DIR__);
 $output = [];
 
+exec("cd {$root} && composer install --no-dev --optimize-autoloader --no-interaction --no-progress --no-scripts 2>&1", $output);
 exec("cd {$root} && php bin/console cache:clear --env=prod --no-debug 2>&1", $output);
 exec("cd {$root} && php bin/console doctrine:migrations:migrate --no-interaction --env=prod 2>&1", $output);
 
