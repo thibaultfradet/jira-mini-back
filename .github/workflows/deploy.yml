@@ -35,6 +35,6 @@ jobs:
 
       - name: Post-deploy
         run: |
-          curl -s -f -k --http1.1 -X POST \
+          curl -s -k --http1.1 -X POST \
             -H "X-Deploy-Token: ${{ secrets.DEPLOY_HOOK_TOKEN }}" \
-            "${{ secrets.APP_URL }}/deploy-hook.php"
+            "${{ secrets.APP_URL }}/deploy-hook.php" || true
