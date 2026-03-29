@@ -1,6 +1,10 @@
 <?php
 
-if (($_SERVER['HTTP_X_DEPLOY_TOKEN'] ?? '') !== getenv('DEPLOY_HOOK_TOKEN')) {
+require dirname(__DIR__) . '/vendor/autoload.php';
+
+(new Symfony\Component\Dotenv\Dotenv())->bootEnv(dirname(__DIR__) . '/.env');
+
+if (($_SERVER['HTTP_X_DEPLOY_TOKEN'] ?? '') !== ($_ENV['DEPLOY_HOOK_TOKEN'] ?? '')) {
     http_response_code(403);
     exit('Forbidden');
 }

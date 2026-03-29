@@ -18,7 +18,7 @@ jobs:
           coverage: none
 
       - name: Install Composer dependencies
-        run: composer install --no-dev --optimize-autoloader --no-interaction --no-progress
+        run: composer install --no-dev --optimize-autoloader --no-interaction --no-progress --no-scripts
 
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
