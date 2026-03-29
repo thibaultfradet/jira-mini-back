@@ -10,11 +10,16 @@ if (($_SERVER['HTTP_X_DEPLOY_TOKEN'] ?? '') !== ($_ENV['DEPLOY_HOOK_TOKEN'] ?? '
 }
 
 $root = dirname(__DIR__);
-$output = [];
+$logFile = $root . '/var/log/deploy.log';
 
-exec("cd {$root} && composer install --no-dev --optimize-autoloader --no-interaction --no-progress --no-scripts 2>&1", $output);
-exec("cd {$root} && php bin/console cache:clear --env=prod --no-debug 2>&1", $output);
-exec("cd {$root} && php bin/console doctrine:migrations:migrate --no-interaction --env=prod 2>&1", $output);
+$script = implode(' && ', [
+    "cd {$root}",
+    "composer install --no-dev --optimize-autoloader --no-interaction --no-progress --no-scripts",
+    "php bin/console cache:clear --env=prod --no-debug",
+    "php bin/console doctrine:migrations:migrate --no-interaction --env=prod",
+]);
+
+exec("({$script}) >> {$logFile} 2>&1 &");
 
 http_response_code(200);
-echo implode("\n", $output);
+echo 'Deploy started';
