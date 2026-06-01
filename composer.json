@@ -9,20 +9,20 @@
         "php": ">=8.4.17",
         "ext-ctype": "*",
         "ext-iconv": "*",
-        "api-platform/doctrine-orm": "^4.2",
-        "api-platform/symfony": "^4.2",
-        "doctrine/doctrine-bundle": "^3.2",
+        "api-platform/doctrine-orm": "^4.3.10",
+        "api-platform/symfony": "^4.3.10",
+        "doctrine/doctrine-bundle": "^3.2.3",
         "doctrine/doctrine-migrations-bundle": "^4.0",
-        "doctrine/orm": "^3.6",
+        "doctrine/orm": "^3.6.7",
         "lexik/jwt-authentication-bundle": "^3.2",
-        "nelmio/cors-bundle": "^2.6",
-        "phpdocumentor/reflection-docblock": "^5.6",
-        "phpstan/phpdoc-parser": "^2.3",
+        "nelmio/cors-bundle": "^2.6.1",
+        "phpdocumentor/reflection-docblock": "^5.6.7",
+        "phpstan/phpdoc-parser": "^2.3.2",
         "symfony/asset": "8.0.*",
         "symfony/console": "8.0.*",
         "symfony/dotenv": "8.0.*",
         "symfony/expression-language": "8.0.*",
-        "symfony/flex": "^2",
+        "symfony/flex": "^2.11",
         "symfony/framework-bundle": "8.0.*",
         "symfony/mailer": "8.0.*",
         "symfony/password-hasher": "8.0.*",
@@ -89,6 +89,6 @@
         }
     },
     "require-dev": {
-        "symfony/maker-bundle": "^1.65"
+        "symfony/maker-bundle": "^1.67"
     }
 }
