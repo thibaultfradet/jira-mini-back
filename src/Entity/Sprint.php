@@ -9,16 +9,23 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: SprintRepository::class)]
+#[ORM\HasLifecycleCallbacks]
 class Sprint
 {
+    public const STATUS_PLANNED = 'planned';
+    public const STATUS_ACTIVE = 'active';
+    public const STATUS_COMPLETED = 'completed';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
     private ?int $id = null;
 
-
     #[ORM\Column(length: 255)]
     private ?string $name = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $goal = null;
 
     #[ORM\Column(type: Types::DATE_MUTABLE)]
     private ?\DateTime $startDate = null;
@@ -26,8 +33,12 @@ class Sprint
     #[ORM\Column(type: Types::DATE_MUTABLE)]
     private ?\DateTime $endDate = null;
 
-    #[ORM\Column]
-    private ?bool $isActive = null;
+    #[ORM\Column(length: 20)]
+    private string $status = self::STATUS_PLANNED;
+
+    #[ORM\ManyToOne(targetEntity: Team::class, inversedBy: 'sprints')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Team $team = null;
 
     #[ORM\Column]
     private ?\DateTimeImmutable $createdAt = null;
@@ -46,11 +57,23 @@ class Sprint
         $this->issues = new ArrayCollection();
     }
 
+    #[ORM\PrePersist]
+    public function prePersist(): void
+    {
+        $this->createdAt = new \DateTimeImmutable();
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    #[ORM\PreUpdate]
+    public function preUpdate(): void
+    {
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
     public function getId(): ?int
     {
         return $this->id;
     }
-
 
     public function getName(): ?string
     {
@@ -60,7 +83,17 @@ class Sprint
     public function setName(string $name): static
     {
         $this->name = $name;
+        return $this;
+    }
 
+    public function getGoal(): ?string
+    {
+        return $this->goal;
+    }
+
+    public function setGoal(?string $goal): static
+    {
+        $this->goal = $goal;
         return $this;
     }
 
@@ -72,7 +105,6 @@ class Sprint
     public function setStartDate(\DateTime $startDate): static
     {
         $this->startDate = $startDate;
-
         return $this;
     }
 
@@ -84,19 +116,33 @@ class Sprint
     public function setEndDate(\DateTime $endDate): static
     {
         $this->endDate = $endDate;
-
         return $this;
     }
 
-    public function isActive(): ?bool
+    public function getStatus(): string
     {
-        return $this->isActive;
+        return $this->status;
     }
 
-    public function setIsActive(bool $isActive): static
+    public function setStatus(string $status): static
     {
-        $this->isActive = $isActive;
+        $this->status = $status;
+        return $this;
+    }
 
+    public function isActive(): bool
+    {
+        return $this->status === self::STATUS_ACTIVE;
+    }
+
+    public function getTeam(): ?Team
+    {
+        return $this->team;
+    }
+
+    public function setTeam(?Team $team): static
+    {
+        $this->team = $team;
         return $this;
     }
 
@@ -108,7 +154,6 @@ class Sprint
     public function setCreatedAt(\DateTimeImmutable $createdAt): static
     {
         $this->createdAt = $createdAt;
-
         return $this;
     }
 
@@ -120,7 +165,6 @@ class Sprint
     public function setUpdatedAt(\DateTimeImmutable $updatedAt): static
     {
         $this->updatedAt = $updatedAt;
-
         return $this;
     }
 
@@ -137,14 +181,12 @@ class Sprint
         if (!$this->issues->contains($issue)) {
             $this->issues->add($issue);
         }
-
         return $this;
     }
 
     public function removeIssue(Issue $issue): static
     {
         $this->issues->removeElement($issue);
-
         return $this;
     }
 }

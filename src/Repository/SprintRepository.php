@@ -3,6 +3,7 @@
 namespace App\Repository;
 
 use App\Entity\Sprint;
+use App\Entity\Team;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -16,28 +17,34 @@ class SprintRepository extends ServiceEntityRepository
         parent::__construct($registry, Sprint::class);
     }
 
-    //    /**
-    //     * @return Sprint[] Returns an array of Sprint objects
-    //     */
-    //    public function findByExampleField($value): array
-    //    {
-    //        return $this->createQueryBuilder('s')
-    //            ->andWhere('s.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->orderBy('s.id', 'ASC')
-    //            ->setMaxResults(10)
-    //            ->getQuery()
-    //            ->getResult()
-    //        ;
-    //    }
+    public function findActiveByTeam(Team $team): ?Sprint
+    {
+        return $this->findOneBy(['team' => $team, 'status' => Sprint::STATUS_ACTIVE]);
+    }
 
-    //    public function findOneBySomeField($value): ?Sprint
-    //    {
-    //        return $this->createQueryBuilder('s')
-    //            ->andWhere('s.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->getQuery()
-    //            ->getOneOrNullResult()
-    //        ;
-    //    }
+    public function findNextPlannedByTeam(Team $team): ?Sprint
+    {
+        return $this->createQueryBuilder('s')
+            ->where('s.team = :team')
+            ->andWhere('s.status = :status')
+            ->setParameter('team', $team)
+            ->setParameter('status', Sprint::STATUS_PLANNED)
+            ->orderBy('s.startDate', 'ASC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    /**
+     * @return Sprint[]
+     */
+    public function findByTeamOrderedByDate(Team $team): array
+    {
+        return $this->createQueryBuilder('s')
+            ->where('s.team = :team')
+            ->setParameter('team', $team)
+            ->orderBy('s.startDate', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
 }

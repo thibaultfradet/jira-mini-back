@@ -35,16 +35,20 @@ class IssueRepository extends ServiceEntityRepository
     }
 
     /**
+     * Issues not in any active sprint and not done.
+     *
      * @return Issue[]
      */
     public function findBacklog(): array
     {
         return $this->createQueryBuilder('i')
             ->leftJoin('i.sprints', 's')
-            ->where('s.id IS NULL OR i.status != :done')
-            ->andWhere('i.type != :epic')
-            ->setParameter('done', 'done')
+            ->where('i.type != :epic')
+            ->andWhere('i.status != :done')
+            ->andWhere('s.id IS NULL OR s.status != :active')
             ->setParameter('epic', 'epic')
+            ->setParameter('done', 'done')
+            ->setParameter('active', 'active')
             ->groupBy('i.id')
             ->orderBy('i.createdAt', 'DESC')
             ->getQuery()

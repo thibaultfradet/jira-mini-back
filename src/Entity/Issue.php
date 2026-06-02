@@ -9,21 +9,27 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: IssueRepository::class)]
+#[ORM\HasLifecycleCallbacks]
 class Issue
 {
+    public const TYPES = ['epic', 'story', 'task', 'bug'];
+    public const STATUSES = ['todo', 'in_progress', 'done'];
+    public const URGENCIES = ['low', 'medium', 'high', 'critical'];
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
     private ?int $id = null;
 
     #[ORM\ManyToOne(targetEntity: Project::class, inversedBy: 'issues')]
+    #[ORM\JoinColumn(nullable: false)]
     private ?Project $project = null;
 
     #[ORM\Column(length: 20)]
     private ?string $type = null;
 
     #[ORM\Column(length: 20)]
-    private ?string $status = null;
+    private string $status = 'todo';
 
     #[ORM\ManyToOne(targetEntity: self::class, inversedBy: 'issues')]
     private ?self $parent = null;
@@ -38,15 +44,22 @@ class Issue
     private ?string $title = null;
 
     #[ORM\Column(type: Types::TEXT)]
-    private ?string $description = null;
+    private string $description = '';
 
     #[ORM\Column(nullable: true)]
     private ?int $storyPoints = null;
 
-    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'assignee')]
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $urgency = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $deadline = null;
+
+    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'assignedIssues')]
     private ?User $assignee = null;
 
-    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'reporter')]
+    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'reportedIssues')]
+    #[ORM\JoinColumn(nullable: false)]
     private ?User $reporter = null;
 
     #[ORM\Column]
@@ -58,8 +71,15 @@ class Issue
     /**
      * @var Collection<int, Comment>
      */
-    #[ORM\OneToMany(targetEntity: Comment::class, mappedBy: 'issue')]
+    #[ORM\OneToMany(targetEntity: Comment::class, mappedBy: 'issue', cascade: ['remove'])]
     private Collection $comments;
+
+    /**
+     * @var Collection<int, SubTask>
+     */
+    #[ORM\OneToMany(targetEntity: SubTask::class, mappedBy: 'issue', cascade: ['remove'])]
+    #[ORM\OrderBy(['position' => 'ASC'])]
+    private Collection $subTasks;
 
     /**
      * @var Collection<int, Sprint>
@@ -71,7 +91,21 @@ class Issue
     {
         $this->issues = new ArrayCollection();
         $this->comments = new ArrayCollection();
+        $this->subTasks = new ArrayCollection();
         $this->sprints = new ArrayCollection();
+    }
+
+    #[ORM\PrePersist]
+    public function prePersist(): void
+    {
+        $this->createdAt = new \DateTimeImmutable();
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    #[ORM\PreUpdate]
+    public function preUpdate(): void
+    {
+        $this->updatedAt = new \DateTimeImmutable();
     }
 
     public function getId(): ?int
@@ -101,7 +135,7 @@ class Issue
         return $this;
     }
 
-    public function getStatus(): ?string
+    public function getStatus(): string
     {
         return $this->status;
     }
@@ -158,7 +192,7 @@ class Issue
         return $this;
     }
 
-    public function getDescription(): ?string
+    public function getDescription(): string
     {
         return $this->description;
     }
@@ -177,6 +211,28 @@ class Issue
     public function setStoryPoints(?int $storyPoints): static
     {
         $this->storyPoints = $storyPoints;
+        return $this;
+    }
+
+    public function getUrgency(): ?string
+    {
+        return $this->urgency;
+    }
+
+    public function setUrgency(?string $urgency): static
+    {
+        $this->urgency = $urgency;
+        return $this;
+    }
+
+    public function getDeadline(): ?\DateTimeImmutable
+    {
+        return $this->deadline;
+    }
+
+    public function setDeadline(?\DateTimeImmutable $deadline): static
+    {
+        $this->deadline = $deadline;
         return $this;
     }
 
@@ -249,6 +305,33 @@ class Issue
     }
 
     /**
+     * @return Collection<int, SubTask>
+     */
+    public function getSubTasks(): Collection
+    {
+        return $this->subTasks;
+    }
+
+    public function addSubTask(SubTask $subTask): static
+    {
+        if (!$this->subTasks->contains($subTask)) {
+            $this->subTasks->add($subTask);
+            $subTask->setIssue($this);
+        }
+        return $this;
+    }
+
+    public function removeSubTask(SubTask $subTask): static
+    {
+        if ($this->subTasks->removeElement($subTask)) {
+            if ($subTask->getIssue() === $this) {
+                $subTask->setIssue(null);
+            }
+        }
+        return $this;
+    }
+
+    /**
      * @return Collection<int, Sprint>
      */
     public function getSprints(): Collection
@@ -262,7 +345,6 @@ class Issue
             $this->sprints->add($sprint);
             $sprint->addIssue($this);
         }
-
         return $this;
     }
 
@@ -271,7 +353,6 @@ class Issue
         if ($this->sprints->removeElement($sprint)) {
             $sprint->removeIssue($this);
         }
-
         return $this;
     }
 }

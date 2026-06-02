@@ -12,6 +12,7 @@ use Symfony\Component\Security\Core\User\UserInterface;
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: '`user`')]
 #[ORM\UniqueConstraint(name: 'UNIQ_IDENTIFIER_EMAIL', fields: ['email'])]
+#[ORM\HasLifecycleCallbacks]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     #[ORM\Id]
@@ -41,6 +42,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private ?string $lastName = null;
 
     #[ORM\Column]
+    private bool $isActive = true;
+
+    #[ORM\Column]
     private ?\DateTimeImmutable $createdAt = null;
 
     #[ORM\Column]
@@ -56,24 +60,52 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      * @var Collection<int, Issue>
      */
     #[ORM\OneToMany(targetEntity: Issue::class, mappedBy: 'assignee')]
-    private Collection $assignee;
+    private Collection $assignedIssues;
 
     /**
      * @var Collection<int, Issue>
      */
     #[ORM\OneToMany(targetEntity: Issue::class, mappedBy: 'reporter')]
-    private Collection $reporter;
+    private Collection $reportedIssues;
+
     /**
      * @var Collection<int, Comment>
      */
     #[ORM\OneToMany(targetEntity: Comment::class, mappedBy: 'author')]
     private Collection $comments;
 
+    /**
+     * @var Collection<int, Team>
+     */
+    #[ORM\ManyToMany(targetEntity: Team::class, mappedBy: 'members')]
+    private Collection $teams;
+
+    /**
+     * @var Collection<int, Notification>
+     */
+    #[ORM\OneToMany(targetEntity: Notification::class, mappedBy: 'user', cascade: ['remove'])]
+    private Collection $notifications;
+
     public function __construct()
     {
-        $this->assignee = new ArrayCollection();
-        $this->reporter = new ArrayCollection();
+        $this->assignedIssues = new ArrayCollection();
+        $this->reportedIssues = new ArrayCollection();
         $this->comments = new ArrayCollection();
+        $this->teams = new ArrayCollection();
+        $this->notifications = new ArrayCollection();
+    }
+
+    #[ORM\PrePersist]
+    public function prePersist(): void
+    {
+        $this->createdAt = new \DateTimeImmutable();
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    #[ORM\PreUpdate]
+    public function preUpdate(): void
+    {
+        $this->updatedAt = new \DateTimeImmutable();
     }
 
     public function getId(): ?int
@@ -89,29 +121,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setEmail(string $email): static
     {
         $this->email = $email;
-
         return $this;
     }
 
-    /**
-     * A visual identifier that represents this user.
-     *
-     * @see UserInterface
-     */
     public function getUserIdentifier(): string
     {
         return (string) $this->email;
     }
 
-    /**
-     * @see UserInterface
-     */
     public function getRoles(): array
     {
         $roles = $this->roles;
-        // guarantee every user at least has ROLE_USER
         $roles[] = 'ROLE_USER';
-
         return array_unique($roles);
     }
 
@@ -121,13 +142,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setRoles(array $roles): static
     {
         $this->roles = $roles;
-
         return $this;
     }
 
-    /**
-     * @see PasswordAuthenticatedUserInterface
-     */
     public function getPassword(): ?string
     {
         return $this->password;
@@ -136,18 +153,13 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setPassword(string $password): static
     {
         $this->password = $password;
-
         return $this;
     }
 
-    /**
-     * Ensure the session doesn't contain actual password hashes by CRC32C-hashing them, as supported since Symfony 7.3.
-     */
     public function __serialize(): array
     {
         $data = (array) $this;
         $data["\0".self::class."\0password"] = hash('crc32c', $this->password);
-
         return $data;
     }
 
@@ -159,7 +171,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setFirstName(string $firstName): static
     {
         $this->firstName = $firstName;
-
         return $this;
     }
 
@@ -171,7 +182,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setLastName(string $lastName): static
     {
         $this->lastName = $lastName;
+        return $this;
+    }
 
+    public function isActive(): bool
+    {
+        return $this->isActive;
+    }
+
+    public function setIsActive(bool $isActive): static
+    {
+        $this->isActive = $isActive;
         return $this;
     }
 
@@ -183,7 +204,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setCreatedAt(\DateTimeImmutable $createdAt): static
     {
         $this->createdAt = $createdAt;
-
         return $this;
     }
 
@@ -195,69 +215,24 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setUpdatedAt(\DateTimeImmutable $updatedAt): static
     {
         $this->updatedAt = $updatedAt;
-
-        return $this;
-    }
-
-    
-    /**
-     * @return Collection<int, Issue>
-     */
-    public function getAssignee(): Collection
-    {
-        return $this->assignee;
-    }
-
-    public function addAssignee(Issue $issue): static
-    {
-        if (!$this->assignee->contains($issue)) {
-            $this->assignee->add($issue);
-            $issue->setAssignee($this);
-        }
-
-        return $this;
-    }
-
-    public function removeAssignee(Issue $issue): static
-    {
-        if ($this->assignee->removeElement($issue)) {
-            if ($issue->getAssignee() === $this) {
-                $issue->setAssignee(null);
-            }
-        }
-
         return $this;
     }
 
     /**
      * @return Collection<int, Issue>
      */
-    public function getReporter(): Collection
+    public function getAssignedIssues(): Collection
     {
-        return $this->reporter;
+        return $this->assignedIssues;
     }
 
-    public function addReporter(Issue $issue): static
+    /**
+     * @return Collection<int, Issue>
+     */
+    public function getReportedIssues(): Collection
     {
-        if (!$this->reporter->contains($issue)) {
-            $this->reporter->add($issue);
-            $issue->setReporter($this);
-        }
-
-        return $this;
+        return $this->reportedIssues;
     }
-
-    public function removeReporter(Issue $issue): static
-    {
-        if ($this->reporter->removeElement($issue)) {
-            if ($issue->getReporter() === $this) {
-                $issue->setReporter(null);
-            }
-        }
-
-        return $this;
-    }
-
 
     /**
      * @return Collection<int, Comment>
@@ -273,20 +248,47 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
             $this->comments->add($comment);
             $comment->setAuthor($this);
         }
-
         return $this;
     }
 
     public function removeComment(Comment $comment): static
     {
         if ($this->comments->removeElement($comment)) {
-            // set the owning side to null (unless already changed)
             if ($comment->getAuthor() === $this) {
                 $comment->setAuthor(null);
             }
         }
-
         return $this;
+    }
+
+    /**
+     * @return Collection<int, Team>
+     */
+    public function getTeams(): Collection
+    {
+        return $this->teams;
+    }
+
+    public function addTeam(Team $team): static
+    {
+        if (!$this->teams->contains($team)) {
+            $this->teams->add($team);
+        }
+        return $this;
+    }
+
+    public function removeTeam(Team $team): static
+    {
+        $this->teams->removeElement($team);
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Notification>
+     */
+    public function getNotifications(): Collection
+    {
+        return $this->notifications;
     }
 
     public function getResetToken(): ?string
@@ -297,7 +299,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setResetToken(?string $resetToken): static
     {
         $this->resetToken = $resetToken;
-
         return $this;
     }
 
@@ -309,7 +310,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setResetTokenExpiresAt(?\DateTimeImmutable $resetTokenExpiresAt): static
     {
         $this->resetTokenExpiresAt = $resetTokenExpiresAt;
-
         return $this;
     }
 
