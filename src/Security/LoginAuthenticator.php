@@ -3,6 +3,7 @@
 namespace App\Security;
 
 use App\Repository\UserRepository;
+use App\Service\RefreshTokenService;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -22,6 +23,7 @@ class LoginAuthenticator extends AbstractAuthenticator
         private UserRepository $userRepository,
         private UserPasswordHasherInterface $passwordHasher,
         private JWTTokenManagerInterface $jwtManager,
+        private RefreshTokenService $refreshTokenService,
     ) {
     }
 
@@ -55,8 +57,12 @@ class LoginAuthenticator extends AbstractAuthenticator
     {
         $user = $token->getUser();
         $jwt = $this->jwtManager->create($user);
+        $refreshToken = $this->refreshTokenService->create($user);
 
-        return new JsonResponse(['token' => $jwt]);
+        return new JsonResponse([
+            'token' => $jwt,
+            'refresh_token' => $refreshToken->getToken(),
+        ]);
     }
 
     public function onAuthenticationFailure(Request $request, AuthenticationException $exception): ?Response
