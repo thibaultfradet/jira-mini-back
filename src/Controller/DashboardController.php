@@ -3,17 +3,24 @@
 namespace App\Controller;
 
 use App\Repository\IssueRepository;
+use App\Repository\NotificationRepository;
 use App\Repository\ProjectRepository;
+use App\Trait\ApiResponseTrait;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/api/dashboard')]
+#[IsGranted('IS_AUTHENTICATED_FULLY')]
 class DashboardController extends AbstractController
 {
+    use ApiResponseTrait;
+
     public function __construct(
         private ProjectRepository $projectRepository,
         private IssueRepository $issueRepository,
+        private NotificationRepository $notificationRepository,
     ) {
     }
 
@@ -22,7 +29,6 @@ class DashboardController extends AbstractController
     {
         $user = $this->getUser();
 
-        // Top 5 most active projects
         $topProjects = $this->projectRepository->findTopActive(5);
         $projects = [];
         foreach ($topProjects as $result) {
@@ -36,9 +42,7 @@ class DashboardController extends AbstractController
             ];
         }
 
-        // Current user's assigned tasks (in_progress + todo)
         $assignedIssues = $this->issueRepository->findAssignedTo($user->getId());
-
         $inProgress = [];
         $todo = [];
         foreach ($assignedIssues as $issue) {
@@ -48,6 +52,8 @@ class DashboardController extends AbstractController
                 'type' => $issue->getType(),
                 'status' => $issue->getStatus(),
                 'storyPoints' => $issue->getStoryPoints(),
+                'urgency' => $issue->getUrgency(),
+                'deadline' => $issue->getDeadline()?->format(\DateTimeInterface::ATOM),
                 'project' => $issue->getProject() ? [
                     'id' => $issue->getProject()->getId(),
                     'name' => $issue->getProject()->getName(),
@@ -61,11 +67,14 @@ class DashboardController extends AbstractController
             }
         }
 
-        return $this->json([
-            'projects' => $projects,
-            'myTasks' => [
-                'inProgress' => $inProgress,
-                'todo' => $todo,
+        return $this->success([
+            'data' => [
+                'projects' => $projects,
+                'myTasks' => [
+                    'inProgress' => $inProgress,
+                    'todo' => $todo,
+                ],
+                'unreadNotificationCount' => $this->notificationRepository->countUnreadForUser($user->getId()),
             ],
         ]);
     }

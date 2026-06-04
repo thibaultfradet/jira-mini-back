@@ -4,17 +4,20 @@ namespace App\Controller;
 
 use App\Entity\Project;
 use App\Repository\ProjectRepository;
+use App\Trait\ApiResponseTrait;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/api/projects')]
+#[IsGranted('IS_AUTHENTICATED_FULLY')]
 class ProjectController extends AbstractController
 {
+    use ApiResponseTrait;
+
     public function __construct(
         private ProjectRepository $projectRepository,
         private EntityManagerInterface $entityManager,
@@ -25,52 +28,18 @@ class ProjectController extends AbstractController
     public function list(): JsonResponse
     {
         $projects = $this->projectRepository->findAll();
-
-        return $this->json(array_map(fn(Project $p) => $this->serialize($p), $projects));
+        return $this->success(['data' => array_map(fn(Project $p) => $this->serialize($p), $projects)]);
     }
 
     #[Route('/{id}', name: 'projects_show', methods: ['GET'])]
     public function show(int $id): JsonResponse
     {
         $project = $this->projectRepository->find($id);
-
         if (!$project) {
-            return $this->json(
-                ['message' => 'Project not found'],
-                Response::HTTP_NOT_FOUND
-            );
+            return $this->notFound('Project not found');
         }
 
-        // Build a custom response payload without
-        $data = [
-            'id' => $project->getId(),
-            'name' => $project->getName(),
-            'description' => $project->getDescription(),
-            'createdAt' => $project->getCreatedAt()?->format(DATE_ATOM),
-            'updatedAt' => $project->getUpdatedAt()?->format(DATE_ATOM),
-            'issues' => array_map(
-                function ($issue) {
-                    $assignee = $issue->getAssignee();
-
-                    return [
-                        'id' => $issue->getId(),
-                        'title' => $issue->getTitle(),
-                        'type' => $issue->getType(),
-                        'status' => $issue->getStatus(),
-                        // Safely include assignee if present
-                        'assignee' => $assignee ? [
-                            'id' => $assignee->getId(),
-                            'firstName' => $assignee->getFirstName(),
-                            'lastName' => $assignee->getLastName(),
-                            'email' => $assignee->getEmail(),
-                        ] : null,
-                    ];
-                },
-                $project->getIssues()->toArray()
-            ),
-        ];
-
-        return $this->json($data);
+        return $this->success(['data' => $this->serialize($project, true)]);
     }
 
     #[Route('', name: 'projects_create', methods: ['POST'])]
@@ -80,19 +49,17 @@ class ProjectController extends AbstractController
         $data = json_decode($request->getContent(), true);
 
         if (empty($data['name'])) {
-            return $this->json(['message' => 'Name is required'], Response::HTTP_BAD_REQUEST);
+            return $this->error('Name is required');
         }
 
         $project = new Project();
         $project->setName($data['name']);
         $project->setDescription($data['description'] ?? '');
-        $project->setCreatedAt(new \DateTimeImmutable());
-        $project->setUpdatedAt(new \DateTimeImmutable());
 
         $this->entityManager->persist($project);
         $this->entityManager->flush();
 
-        return $this->json($this->serialize($project, true), Response::HTTP_CREATED);
+        return $this->created(['data' => $this->serialize($project)]);
     }
 
     #[Route('/{id}', name: 'projects_update', methods: ['PATCH'])]
@@ -100,9 +67,8 @@ class ProjectController extends AbstractController
     public function update(int $id, Request $request): JsonResponse
     {
         $project = $this->projectRepository->find($id);
-
         if (!$project) {
-            return $this->json(['message' => 'Project not found'], Response::HTTP_NOT_FOUND);
+            return $this->notFound('Project not found');
         }
 
         $data = json_decode($request->getContent(), true);
@@ -110,15 +76,13 @@ class ProjectController extends AbstractController
         if (isset($data['name'])) {
             $project->setName($data['name']);
         }
-
         if (isset($data['description'])) {
             $project->setDescription($data['description']);
         }
 
-        $project->setUpdatedAt(new \DateTimeImmutable());
         $this->entityManager->flush();
 
-        return $this->json($this->serialize($project, true));
+        return $this->success(['data' => $this->serialize($project)]);
     }
 
     #[Route('/{id}', name: 'projects_delete', methods: ['DELETE'])]
@@ -126,15 +90,14 @@ class ProjectController extends AbstractController
     public function delete(int $id): JsonResponse
     {
         $project = $this->projectRepository->find($id);
-
         if (!$project) {
-            return $this->json(['message' => 'Project not found'], Response::HTTP_NOT_FOUND);
+            return $this->notFound('Project not found');
         }
 
         $this->entityManager->remove($project);
         $this->entityManager->flush();
 
-        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+        return $this->noContent();
     }
 
     private function serialize(Project $project, bool $withIssues = false): array
@@ -150,15 +113,22 @@ class ProjectController extends AbstractController
         if ($withIssues) {
             $data['issues'] = [];
             foreach ($project->getIssues() as $issue) {
-                // Only include root issues (epics without parent)
                 if ($issue->getParent() !== null) {
                     continue;
                 }
+                $assignee = $issue->getAssignee();
                 $data['issues'][] = [
                     'id' => $issue->getId(),
                     'title' => $issue->getTitle(),
                     'type' => $issue->getType(),
                     'status' => $issue->getStatus(),
+                    'storyPoints' => $issue->getStoryPoints(),
+                    'assignee' => $assignee ? [
+                        'id' => $assignee->getId(),
+                        'firstName' => $assignee->getFirstName(),
+                        'lastName' => $assignee->getLastName(),
+                        'email' => $assignee->getEmail(),
+                    ] : null,
                 ];
             }
         }
