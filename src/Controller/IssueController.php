@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\Issue;
+use App\Entity\IssueStatusHistory;
 use App\Repository\IssueRepository;
 use App\Repository\ProjectRepository;
 use App\Repository\SprintRepository;
@@ -144,7 +145,18 @@ class IssueController extends AbstractController
             if (!in_array($data['status'], Issue::STATUSES)) {
                 return $this->error('Invalid status. Allowed: ' . implode(', ', Issue::STATUSES));
             }
-            $issue->setStatus($data['status']);
+            $oldStatus = $issue->getStatus();
+            $newStatus = $data['status'];
+            if ($oldStatus !== $newStatus) {
+                $history = new IssueStatusHistory();
+                $history->setIssue($issue)
+                    ->setFromStatus($oldStatus)
+                    ->setToStatus($newStatus)
+                    ->setChangedBy($this->getUser())
+                    ->setChangedAt(new \DateTimeImmutable());
+                $this->entityManager->persist($history);
+            }
+            $issue->setStatus($newStatus);
         }
         if (isset($data['urgency'])) {
             if ($data['urgency'] !== null && !in_array($data['urgency'], Issue::URGENCIES)) {
