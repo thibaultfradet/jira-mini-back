@@ -47,4 +47,22 @@ class SprintRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    /**
+     * Returns the last $limit completed or active sprints for a team, most recent first.
+     *
+     * @return Sprint[]
+     */
+    public function findLastCompletedOrActiveByTeam(Team $team, int $limit = 5): array
+    {
+        return $this->createQueryBuilder('s')
+            ->where('s.team = :team')
+            ->andWhere('s.status IN (:statuses)')
+            ->setParameter('team', $team)
+            ->setParameter('statuses', [Sprint::STATUS_ACTIVE, Sprint::STATUS_COMPLETED])
+            ->orderBy('s.endDate', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
 }
