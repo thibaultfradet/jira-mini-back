@@ -27,9 +27,14 @@ class TeamController extends AbstractController
 
     #[Route('', name: 'teams_list', methods: ['GET'])]
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
-    public function list(): JsonResponse
+    public function list(Request $request): JsonResponse
     {
-        $teams = $this->teamRepository->findAll();
+        if ($request->query->getBoolean('myTeams')) {
+            $user = $this->getUser();
+            $teams = $this->teamRepository->findByMember($user);
+        } else {
+            $teams = $this->teamRepository->findAll();
+        }
         return $this->success(['data' => array_map(fn(Team $t) => $this->serialize($t), $teams)]);
     }
 

@@ -33,15 +33,17 @@ class NotificationController extends AbstractController
         );
 
         return $this->success([
-            'data' => array_map(fn($n) => [
-                'id' => $n->getId(),
-                'type' => $n->getType(),
-                'message' => $n->getMessage(),
-                'isRead' => $n->isRead(),
-                'relatedIssueId' => $n->getRelatedIssueId(),
-                'createdAt' => $n->getCreatedAt()?->format(\DateTimeInterface::ATOM),
-            ], $notifications),
-            'unreadCount' => $this->notificationRepository->countUnreadForUser($user->getId()),
+            'data' => [
+                'notifications' => array_map(fn($n) => [
+                    'id' => $n->getId(),
+                    'type' => $n->getType(),
+                    'message' => $n->getMessage(),
+                    'isRead' => $n->isRead(),
+                    'relatedIssueId' => $n->getRelatedIssueId(),
+                    'createdAt' => $n->getCreatedAt()?->format(\DateTimeInterface::ATOM),
+                ], $notifications),
+                'unreadCount' => $this->notificationRepository->countUnreadForUser($user->getId()),
+            ],
         ]);
     }
 
