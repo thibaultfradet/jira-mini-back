@@ -1,0 +1,12 @@
+---
+# E2E override: runs the backend in the "test" environment on the same port 80.
+# In test env, DATABASE_URL points to "app" + "_test" suffix → "app_test" database.
+#
+# Use together with the other compose files so the dev override is not lost
+# (frankenphp_dev build, volumes, mailer service):
+#
+#   docker compose -f compose.yaml -f compose.override.yaml -f compose.test.yaml up -d --wait
+services:
+  php:
+    environment:
+      APP_ENV: test
