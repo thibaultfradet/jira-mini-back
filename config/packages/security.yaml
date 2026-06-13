@@ -14,6 +14,7 @@ security:
             pattern: ^/auth
             stateless: true
             provider: app_user_provider
+            user_checker: App\Security\UserChecker
             custom_authenticator: App\Security\LoginAuthenticator
 
         api:
